@@ -1,0 +1,9 @@
+streamlit 
+numpy 
+soundfile 
+librosa 
+webrtcvad 
+pydub
+wave 
+pandas
+setuptools 
