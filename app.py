@@ -10,7 +10,6 @@ import os
 import wave
 import collections
 import contextlib
-import struct
 import pandas as pd
 
 class Frame(object):
@@ -136,26 +135,6 @@ def analyze_audio(audio_file):
     
     return all_segments, pcm_data, sample_rate
 
-def calculate_silence_between_speakers(segments):
-    silence_data = []
-    last_speaker = None
-    last_end_time = 0
-
-    for segment in segments:
-        if segment['type'] == 'speech':
-            if last_speaker and segment['speaker'] != last_speaker:
-                silence_duration = segment['start'] - last_end_time
-                if last_speaker == 'USER':
-                    silence_data.append({
-                        'From': last_speaker,
-                        'To': segment['speaker'],
-                        'Silence Duration': f"{silence_duration:.2f}s"
-                    })
-            last_speaker = segment['speaker']
-            last_end_time = segment['end']
-
-    return silence_data
-
 def main():
     st.title("Audio Analyzer")
     
@@ -178,6 +157,7 @@ def main():
             segments = [seg for seg in segments if seg['duration'] >= min_segment_length]
         
         st.write("## Audio Segments")
+        segment_data = []
         for i, segment in enumerate(segments):
             col1, col2, col3, col4 = st.columns([2, 1, 1, 2])
             
@@ -206,16 +186,31 @@ def main():
                     segment['speaker'] = "N/A"
                     st.write("N/A")
             
+            # Add segment data to table list
+            segment_data.append({
+                "Segment": i + 1,
+                "Type": segment['type'].capitalize(),
+                "Start": segment['start'],
+                "End": segment['end'],
+                "Duration": segment['duration'],
+                "Speaker": segment['speaker'] if segment['type'] == "speech" else "N/A"
+            })
+            
             st.write("---")
         
-        # Calculate and display silence between speakers
-        silence_data = calculate_silence_between_speakers(segments)
-        if silence_data:
-            st.write("## Silence Between Speakers")
-            df = pd.DataFrame(silence_data)
-            st.table(df)
-        else:
-            st.write("No silence between different speakers detected.")
+        # Display table with segments
+        df = pd.DataFrame(segment_data)
+        st.write("## Segment Table")
+        st.table(df)
+
+        # Download button for the segment table
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="Download Segment Table as CSV",
+            data=csv,
+            file_name='segment_table.csv',
+            mime='text/csv',
+        )
 
 if __name__ == "__main__":
     main()
